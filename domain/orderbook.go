@@ -1,8 +1,8 @@
 package domain
 
 type Order struct {
-	Price    float64 `json:"price"`
-	Quantity int64   `json:"quantity"`
+	Price    float64 `json:"Price"`
+	Quantity int64   `json:"Quantity"`
 }
 
 type OrderBook struct {
