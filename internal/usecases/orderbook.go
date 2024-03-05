@@ -43,10 +43,11 @@ func (o *OrderBookUseCase) Ping(ctx context.Context) error {
 	}
 	accounts := response.GetAccounts()
 
-	o.investClient.Logger.Infof("Ping Tinkoff")
+	o.investClient.Logger.Infof("Ping Tinkoff:")
 	for _, account := range accounts {
 		o.investClient.Logger.Infof(" ==> account id = %v\n", account.GetId())
 	}
+	o.investClient.Logger.Infof("Ping Tinkoff: ping was completed successfully.")
 	return nil
 }
 

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bataloff/tiknkoff/internal/models"
 	builder "github.com/doug-martin/goqu/v9"
@@ -37,11 +38,26 @@ func (o *OrderBookRepository) Store(ctx context.Context, orders []*domain.OrderB
 		for i := range orders {
 			order := models.OrderBookFromEntity(orders[i])
 
-			insert := tx.Insert("orderbooks").Rows(order).Returning("id").Executor()
-
 			var lastInsertID int64
-			if _, err := insert.ScanVal(&lastInsertID); err != nil {
-				return err
+
+			switch o.pool.Dialect() {
+			case "postgres":
+				insert := tx.Insert("orderbooks").Rows(order).Returning("id").Executor()
+				if _, err := insert.ScanVal(&lastInsertID); err != nil {
+					return err
+				}
+			case "sqlite3":
+				result, err := tx.Insert("orderbooks").Rows(order).Executor().ExecContext(ctx)
+				if err != nil {
+					return err
+				}
+
+				lastInsertID, err = result.LastInsertId()
+				if err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("unsupported insert operation for dialect %s", o.pool.Dialect())
 			}
 
 			bids, asks := models.OrdersFromEntity(lastInsertID, orders[i])

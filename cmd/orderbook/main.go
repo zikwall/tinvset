@@ -64,7 +64,7 @@ func Main(ctx *cli.Context) error {
 
 	defer func() {
 		single.Shutdown(func(err error) {
-			single.Logger.Sugar().Error(err)
+			log.Println(err)
 		})
 	}()
 
