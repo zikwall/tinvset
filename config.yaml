@@ -1,7 +1,0 @@
-server:
-  listen_address: 0.0.0.0:1337
-database:
-  debug: true
-  dialect: sqlite3
-  path: "./sqlite.db"
-invest_config_file_path: "/path/to/tink/invest/config.yaml"

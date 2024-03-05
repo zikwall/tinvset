@@ -25,33 +25,8 @@ func NewOrderBookRepository(ctx context.Context, pool database.Pool) (*OrderBook
 }
 
 func (o *OrderBookRepository) migrate(ctx context.Context) error {
-	const schema = `
-create table if not exists orderbooks (
-    id integer primary key autoincrement,
-    figi text,
-    instrument_uid text,
-    depth integer,
-    is_consistent integer,
-    time_unix integer,
-    limit_up real,
-    limit_down real
-);
-
-create table if not exists bids (
-    orderbook_id integer,
-    price real,
-    quantity integer,
-    foreign key (orderbook_id) references orderbooks (id) on delete cascade 
-);
-
-create table if not exists asks (
-    orderbook_id integer,
-    price real,
-    quantity integer,
-    foreign key (orderbook_id) references orderbooks (id) on delete cascade 
-);
-`
-	if _, err := o.pool.Builder().ExecContext(ctx, schema); err != nil {
+	// все это нужно вынести потом в миграции
+	if _, err := o.pool.Builder().ExecContext(ctx, getSchema(o.pool.Dialect())); err != nil {
 		return err
 	}
 	return nil
@@ -62,25 +37,19 @@ func (o *OrderBookRepository) Store(ctx context.Context, orders []*domain.OrderB
 		for i := range orders {
 			order := models.OrderBookFromEntity(orders[i])
 
-			result, err := tx.Insert("orderbooks").Rows(order).Executor().ExecContext(ctx)
-			if err != nil {
+			insert := tx.Insert("orderbooks").Rows(order).Returning("id").Executor()
+
+			var lastInsertID int64
+			if _, err := insert.ScanVal(&lastInsertID); err != nil {
 				return err
 			}
 
-			lastID, err := result.LastInsertId()
-			if err != nil {
+			bids, asks := models.OrdersFromEntity(lastInsertID, orders[i])
+			if _, err := tx.Insert("bids").Rows(bids).Executor().ExecContext(ctx); err != nil {
 				return err
 			}
 
-			bids, asks := models.OrdersFromEntity(lastID, orders[i])
-
-			_, err = tx.Insert("bids").Rows(bids).Executor().ExecContext(ctx)
-			if err != nil {
-				return err
-			}
-
-			_, err = tx.Insert("asks").Rows(asks).Executor().ExecContext(ctx)
-			if err != nil {
+			if _, err := tx.Insert("asks").Rows(asks).Executor().ExecContext(ctx); err != nil {
 				return err
 			}
 		}

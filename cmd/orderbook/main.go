@@ -4,17 +4,14 @@ import (
 	"context"
 	"log"
 	"os"
-	"time"
 
 	"github.com/tinkoff/invest-api-go-sdk/investgo"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/bataloff/tiknkoff/config"
+	"github.com/bataloff/tiknkoff/internal/instance"
 	"github.com/bataloff/tiknkoff/internal/repositories"
 	"github.com/bataloff/tiknkoff/internal/usecases"
-	"github.com/bataloff/tiknkoff/pkg/database/sqlite"
 	"github.com/bataloff/tiknkoff/pkg/signal"
 )
 
@@ -52,60 +49,41 @@ func Main(ctx *cli.Context) error {
 		return err
 	}
 
-	// загружаем конфигурацию для сдк из .yaml файла
 	investCfg, err := investgo.LoadConfig(cfg.InvestConfigFilePath)
 	if err != nil {
 		return err
 	}
 
-	// ВСЕ ЭТО МОЖНО КУДА-ТО ВЫНЕСТИ
-	// сдк использует для внутреннего логирования investgo.Logger
-	// для примера передадим uber.zap
-	zapConfig := zap.NewDevelopmentConfig()
-	zapConfig.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.DateTime)
-	zapConfig.EncoderConfig.TimeKey = "time"
-	l, err := zapConfig.Build()
-	logger := l.Sugar()
-	defer func() {
-		if err := logger.Sync(); err != nil {
-			log.Printf(err.Error())
-		}
-	}()
-	// ВСЕ ЭТО МОЖНО КУДА-ТО ВЫНЕСТИ
-
-	client, err := investgo.NewClient(appContext, investCfg, logger)
-	if err != nil {
-		logger.Fatalf("client creating error %v", err.Error())
-	}
-
-	// чтобы не было много таких defer, можно обернуть в DropWrap (pkg), который будет вызывать метод Drop
-	// после регистрации дропера автоматически при завершении приложения, см. доку по этому пакету там же.
-	defer func() {
-		logger.Infof("closing client connection")
-		err := client.Stop()
-		if err != nil {
-			logger.Errorf("client shutdown error %v", err.Error())
-		}
-	}()
-
-	connect, err := sqlite.New(appContext, cfg.Database.Path, cfg.Database.Debug)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = connect.Drop()
-	}()
-
-	orderBookRepo, err := repositories.NewOrderBookRepository(appContext, connect)
+	single, err := instance.New(appContext, &instance.Options{
+		Database: cfg.Database,
+		Invest:   investCfg,
+	})
 	if err != nil {
 		return err
 	}
 
-	useCase := usecases.NewOrderBookUseCase(orderBookRepo, client)
+	defer func() {
+		single.Shutdown(func(err error) {
+			single.Logger.Sugar().Error(err)
+		})
+	}()
+
+	orderBookRepo, err := repositories.NewOrderBookRepository(appContext, single.Pool)
+	if err != nil {
+		return err
+	}
+
+	useCase := usecases.NewOrderBookUseCase(orderBookRepo, single.Client.Tinkoff())
 
 	await, stop := signal.Notifier(func() {
-		// call before shutdown application
+		single.Logger.Sugar().Info("receive stop signal, start shutdown process..")
 	})
+
+	if cfg.PingInvest {
+		if err = useCase.Ping(appContext); err != nil {
+			return err
+		}
+	}
 
 	go func() {
 		if err = useCase.Sync(appContext); err != nil {

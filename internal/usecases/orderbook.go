@@ -36,6 +36,20 @@ func NewOrderBookUseCase(
 	}
 }
 
+func (o *OrderBookUseCase) Ping(ctx context.Context) error {
+	response, err := o.investClient.NewUsersServiceClient().GetAccounts()
+	if err != nil {
+		return err
+	}
+	accounts := response.GetAccounts()
+
+	o.investClient.Logger.Infof("Ping Tinkoff")
+	for _, account := range accounts {
+		o.investClient.Logger.Infof(" ==> account id = %v\n", account.GetId())
+	}
+	return nil
+}
+
 // Sync данный метод можно разделить на множество отдельных методов, чтобы не было такой большой конгнитивнйо нагрузки
 func (o *OrderBookUseCase) Sync(ctx context.Context) error {
 	const (

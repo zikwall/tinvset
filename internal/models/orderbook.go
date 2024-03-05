@@ -31,9 +31,9 @@ func toOrderModels(obID int64, orders []domain.Order) []Order {
 
 type OrderBook struct {
 	Figi          string  `db:"figi"`
-	InstrumentUid string  `db:"instrumentUid"`
+	InstrumentUid string  `db:"instrument_uid"`
 	Depth         int32   `db:"depth"`
-	IsConsistent  bool    `db:"is_consistent"`
+	IsConsistent  uint8   `db:"is_consistent"`
 	TimeUnix      int64   `db:"time_unix"`
 	LimitUp       float64 `db:"limit_up"`
 	LimitDown     float64 `db:"limit_down"`
@@ -44,9 +44,16 @@ func OrderBookFromEntity(order *domain.OrderBook) OrderBook {
 		Figi:          order.Figi,
 		InstrumentUid: order.InstrumentUid,
 		Depth:         order.Depth,
-		IsConsistent:  order.IsConsistent,
+		IsConsistent:  b2u8(order.IsConsistent),
 		TimeUnix:      order.TimeUnix,
 		LimitUp:       order.LimitUp,
 		LimitDown:     order.LimitDown,
 	}
+}
+
+func b2u8(value bool) uint8 {
+	if value {
+		return 1
+	}
+	return 0
 }

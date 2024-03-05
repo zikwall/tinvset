@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/bataloff/tiknkoff/pkg/database"
 )
 
 type Server struct {
@@ -12,15 +14,10 @@ type Server struct {
 }
 
 type Config struct {
-	Server               Server   `yaml:"server"`
-	Database             Database `yaml:"database"`
-	InvestConfigFilePath string   `yaml:"invest_config_file_path"`
-}
-
-type Database struct {
-	Dialect string `yaml:"dialect"`
-	Path    string `yaml:"path"` // if sqlite
-	Debug   bool   `yaml:"debug"`
+	Server               Server        `yaml:"server"`
+	Database             *database.Opt `yaml:"database"`
+	InvestConfigFilePath string        `yaml:"invest_config_file_path"`
+	PingInvest           bool          `yaml:"ping_invest"`
 }
 
 func New(filepath string) (*Config, error) {

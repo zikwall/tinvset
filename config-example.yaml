@@ -1,0 +1,17 @@
+server:
+  listen_address: 0.0.0.0:1337
+database:
+  host: xxx.xx.xx.xx
+  port: 5432
+  user: user
+  name: tinkoff
+  password: "xxxx"
+  max_execution_time: 30
+  max_open_conns: 20
+  max_idle_conns: 15
+  max_conn_max_lifetime: 10m0s
+  dialect: "postgres"
+  debug: true
+  sqlite_path: "./sqlite.db"
+invest_config_file_path: "/path/to/tink/invest/config.yaml"
+ping_invest: true

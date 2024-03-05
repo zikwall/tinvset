@@ -1,29 +1,26 @@
-package sqlite
+package postgres
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"time"
 
-	builder "github.com/doug-martin/goqu/v9"
+	// nolint:revive // it's OK
+	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
+	_ "github.com/lib/pq"
 
-	// nolint:golint // it's OK
-	// _ "github.com/doug-martin/goqu/v9/dialect/mysql"
-	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
-	_ "github.com/go-sql-driver/mysql"
+	builder "github.com/doug-martin/goqu/v9"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/bataloff/tiknkoff/pkg/database"
 )
-
-const sqlite3Dialect = "sqlite3"
 
 type Pool struct {
 	db *builder.Database
 }
 
 func (c *Pool) Dialect() string {
-	return sqlite3Dialect
+	return "postgres"
 }
 
 func (c *Pool) Builder() *builder.Database {
@@ -36,12 +33,10 @@ func (c *Pool) Drop() error {
 }
 
 func (c *Pool) DropMsg() string {
-	return "close database: this is not implemented"
+	return "close database: is not implemented"
 }
-
 func NewPool(ctx context.Context, opt *database.Opt) (*Pool, error) {
-
-	db, err := sql.Open(opt.Dialect, opt.SQLitePath)
+	db, err := sqlx.Open(opt.Dialect, opt.ConnectionString())
 	if err != nil {
 		return nil, err
 	}
@@ -52,18 +47,20 @@ func NewPool(ctx context.Context, opt *database.Opt) (*Pool, error) {
 		return nil, err
 	}
 
+	db.SetMaxIdleConns(opt.MaxIdleConns)
+	db.SetMaxOpenConns(opt.MaxOpenConns)
+	db.SetConnMaxLifetime(opt.MaxConnMaxLifetime)
+
 	dialect := builder.Dialect(opt.Dialect)
-	connect := &Pool{
-		db: dialect.DB(db),
-	}
+	pool := dialect.DB(db)
 
 	if opt.Debug {
 		logger := &database.Logger{}
 		logger.SetCallback(func(format string, v ...interface{}) {
-			log.Panicln(v)
+			log.Println(v)
 		})
-		connect.db.Logger(logger)
+		pool.Logger(logger)
 	}
 
-	return connect, nil
+	return &Pool{db: pool}, nil
 }

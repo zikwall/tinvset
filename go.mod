@@ -5,6 +5,8 @@ go 1.20
 require (
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/jmoiron/sqlx v1.3.5
+	github.com/lib/pq v1.10.1
 	github.com/tinkoff/invest-api-go-sdk v1.4.6
 	github.com/urfave/cli/v2 v2.27.1
 	go.uber.org/zap v1.24.0
