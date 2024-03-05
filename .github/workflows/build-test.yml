@@ -35,7 +35,7 @@ jobs:
       - name: Build TinkoffInvest
         env:
           GOPROXY: "https://proxy.golang.org"
-        run: go build ./cmd/balancer/main.go
+        run: go build ./cmd/orderbook/main.go
 
       - name: Test All
         env:
